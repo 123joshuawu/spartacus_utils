@@ -1,0 +1,13 @@
+{
+  "provider": {
+    "host": "https://rpc.ftm.tools"
+  },
+  "contracts": {
+    "staking": {
+      "address": "0x9863056B4Bdb32160A70107a6797dD06B56E8137"
+    },
+    "sspa": {
+      "address": "0x8e2549225E21B1Da105563D419d5689b80343E01"
+    }
+  }
+}
