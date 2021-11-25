@@ -47,29 +47,41 @@ const getContract = async (address) => {
 };
 
 class SpaContractProvider {
-  constructor(stakingAddress, sSpaAddress) {
+  constructor(spaCirculatingSupplyAddress, stakingAddress, sSpaAddress) {
+    this.spaCirculatingSupplyAddress = spaCirculatingSupplyAddress;
     this.stakingAddress = stakingAddress;
     this.sSpaAddress = sSpaAddress;
   }
 
   async load() {
+    this.spaCirculatingSupplyContract = await getContract(
+      this.spaCirculatingSupplyAddress
+    );
+
     this.stakingContract = await getContract(this.stakingAddress);
 
     this.sSpaContract = await getContract(this.sSpaAddress);
   }
 
+  /** @returns {Promise<number>} */
+  getCirculatingSupply() {
+    return this.spaCirculatingSupplyContract.methods
+      .OHMCirculatingSupply()
+      .call();
+  }
+
   /** @returns {Promise<any>} */
-  getEpoch() {
+  getStakeEpoch() {
     return this.stakingContract.methods.epoch().call();
   }
 
   /** @returns {Promise<any>} */
-  getCirc() {
+  getStakeCirc() {
     return this.sSpaContract.methods.circulatingSupply().call();
   }
 
   async getStakingStats() {
-    return await Promise.all([this.getEpoch(), this.getCirc()]).then(
+    return await Promise.all([this.getStakeEpoch(), this.getStakeCirc()]).then(
       ([epoch, circ]) => {
         const stakingReward = epoch.distribute;
         const stakingRebase =
@@ -88,8 +100,9 @@ class SpaContractProvider {
 }
 
 const spaContractProvider = new SpaContractProvider(
-  config.contracts.staking.address,
-  config.contracts.sspa.address
+  config.contracts.spaCirculatingSupply.address,
+  config.contracts.spaStaking.address,
+  config.contracts.sSpa.address
 );
 
 const app = express();
@@ -111,11 +124,22 @@ app.get("/api/stats", async (req, res) => {
   }
 });
 
+app.get("/api/v0/circulating-supply", async (req, res) => {
+  try {
+    const circulatingSupply = await spaContractProvider.getCirculatingSupply();
+
+    res.send(circulatingSupply);
+  } catch (err) {
+    console.error(err);
+    res.status(500);
+  }
+});
+
 app.get("*", (req, res) => {
   res.json({ message: "hi" });
 });
 
-app.listen(process.env.PORT || 3000, () => {
+app.listen(process.env.PORT || 3000, async () => {
   console.log("Server ready");
 
   spaContractProvider
